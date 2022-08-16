@@ -33,6 +33,7 @@ import (
 	controllerscontext "github.com/karmada-io/karmada/pkg/controllers/context"
 	"github.com/karmada-io/karmada/pkg/controllers/execution"
 	"github.com/karmada-io/karmada/pkg/controllers/federatedresourcequota"
+	"github.com/karmada-io/karmada/pkg/controllers/gracefuleviction"
 	"github.com/karmada-io/karmada/pkg/controllers/hpa"
 	"github.com/karmada-io/karmada/pkg/controllers/mcs"
 	"github.com/karmada-io/karmada/pkg/controllers/namespace"
@@ -48,7 +49,7 @@ import (
 	"github.com/karmada-io/karmada/pkg/sharedcli/profileflag"
 	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/fedinformer/genericmanager"
-	"github.com/karmada-io/karmada/pkg/util/fedinformer/typedManager"
+	"github.com/karmada-io/karmada/pkg/util/fedinformer/typedmanager"
 	"github.com/karmada-io/karmada/pkg/util/gclient"
 	"github.com/karmada-io/karmada/pkg/util/helper"
 	"github.com/karmada-io/karmada/pkg/util/objectwatcher"
@@ -177,6 +178,9 @@ func init() {
 	controllers["unifiedAuth"] = startUnifiedAuthController
 	controllers["federatedResourceQuotaSync"] = startFederatedResourceQuotaSyncController
 	controllers["federatedResourceQuotaStatus"] = startFederatedResourceQuotaStatusController
+	if features.FeatureGate.Enabled(features.Failover) && features.FeatureGate.Enabled(features.GracefulEviction) {
+		controllers["gracefulEviction"] = startGracefulEvictionController
+	}
 }
 
 func startClusterController(ctx controllerscontext.Context) (enabled bool, err error) {
@@ -184,12 +188,14 @@ func startClusterController(ctx controllerscontext.Context) (enabled bool, err e
 	opts := ctx.Opts
 
 	clusterController := &cluster.Controller{
-		Client:                    mgr.GetClient(),
-		EventRecorder:             mgr.GetEventRecorderFor(cluster.ControllerName),
-		ClusterMonitorPeriod:      opts.ClusterMonitorPeriod.Duration,
-		ClusterMonitorGracePeriod: opts.ClusterMonitorGracePeriod.Duration,
-		ClusterStartupGracePeriod: opts.ClusterStartupGracePeriod.Duration,
-		FailoverEvictionTimeout:   opts.FailoverEvictionTimeout.Duration,
+		Client:                             mgr.GetClient(),
+		EventRecorder:                      mgr.GetEventRecorderFor(cluster.ControllerName),
+		ClusterMonitorPeriod:               opts.ClusterMonitorPeriod.Duration,
+		ClusterMonitorGracePeriod:          opts.ClusterMonitorGracePeriod.Duration,
+		ClusterStartupGracePeriod:          opts.ClusterStartupGracePeriod.Duration,
+		FailoverEvictionTimeout:            opts.FailoverEvictionTimeout.Duration,
+		EnableTaintManager:                 ctx.Opts.EnableTaintManager,
+		ClusterTaintEvictionRetryFrequency: 10 * time.Second,
 	}
 	if err := clusterController.SetupWithManager(mgr); err != nil {
 		return false, err
@@ -199,7 +205,6 @@ func startClusterController(ctx controllerscontext.Context) (enabled bool, err e
 		if err := cluster.IndexField(mgr); err != nil {
 			return false, err
 		}
-
 		taintManager := &cluster.NoExecuteTaintManager{
 			Client:                             mgr.GetClient(),
 			EventRecorder:                      mgr.GetEventRecorderFor(cluster.TaintManagerName),
@@ -255,7 +260,7 @@ func startClusterStatusController(ctx controllerscontext.Context) (enabled bool,
 		KubeClient:                        kubeclientset.NewForConfigOrDie(mgr.GetConfig()),
 		EventRecorder:                     mgr.GetEventRecorderFor(status.ControllerName),
 		PredicateFunc:                     clusterPredicateFunc,
-		TypedInformerManager:              typedManager.GetInstance(),
+		TypedInformerManager:              typedmanager.GetInstance(),
 		GenericInformerManager:            genericmanager.GetInstance(),
 		StopChan:                          stopChan,
 		ClusterClientSetFunc:              util.NewClusterClientSet,
@@ -452,6 +457,30 @@ func startFederatedResourceQuotaStatusController(ctx controllerscontext.Context)
 	return true, nil
 }
 
+func startGracefulEvictionController(ctx controllerscontext.Context) (enabled bool, err error) {
+	rbGracefulEvictionController := &gracefuleviction.RBGracefulEvictionController{
+		Client:                  ctx.Mgr.GetClient(),
+		EventRecorder:           ctx.Mgr.GetEventRecorderFor(gracefuleviction.RBGracefulEvictionControllerName),
+		RateLimiterOptions:      ctx.Opts.RateLimiterOptions,
+		GracefulEvictionTimeout: ctx.Opts.GracefulEvictionTimeout.Duration,
+	}
+	if err := rbGracefulEvictionController.SetupWithManager(ctx.Mgr); err != nil {
+		return false, err
+	}
+
+	crbGracefulEvictionController := &gracefuleviction.CRBGracefulEvictionController{
+		Client:                  ctx.Mgr.GetClient(),
+		EventRecorder:           ctx.Mgr.GetEventRecorderFor(gracefuleviction.CRBGracefulEvictionControllerName),
+		RateLimiterOptions:      ctx.Opts.RateLimiterOptions,
+		GracefulEvictionTimeout: ctx.Opts.GracefulEvictionTimeout.Duration,
+	}
+	if err := crbGracefulEvictionController.SetupWithManager(ctx.Mgr); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // setupControllers initialize controllers and setup one by one.
 func setupControllers(mgr controllerruntime.Manager, opts *options.Options, stopChan <-chan struct{}) {
 	restConfig := mgr.GetConfig()
@@ -532,6 +561,7 @@ func setupControllers(mgr controllerruntime.Manager, opts *options.Options, stop
 			ConcurrentWorkSyncs:               opts.ConcurrentWorkSyncs,
 			EnableTaintManager:                opts.EnableTaintManager,
 			RateLimiterOptions:                opts.RateLimiterOpts,
+			GracefulEvictionTimeout:           opts.GracefulEvictionTimeout,
 		},
 		StopChan:                    stopChan,
 		DynamicClientSet:            dynamicClientSet,
