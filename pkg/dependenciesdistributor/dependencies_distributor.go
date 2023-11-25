@@ -1,3 +1,19 @@
+/*
+Copyright 2022 The Karmada Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package dependenciesdistributor
 
 import (
@@ -5,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -45,6 +62,9 @@ import (
 )
 
 const (
+	// bindingDependedIdLabelKey is the resoruce id of the independent binding which the attached binding depends on.
+	bindingDependedIdLabelKey = "resourcebinding.karmada.io/depended-id"
+
 	// bindingDependedByLabelKeyPrefix is the prefix to a label key specifying an attached binding referred by which independent binding.
 	// the key is in the label of an attached binding which should be unique, because resource like secret can be referred by multiple deployments.
 	bindingDependedByLabelKeyPrefix = "resourcebinding.karmada.io/depended-by-"
@@ -498,19 +518,14 @@ func (d *DependenciesDistributor) removeScheduleResultFromAttachedBindings(bindi
 }
 
 func (d *DependenciesDistributor) createOrUpdateAttachedBinding(attachedBinding *workv1alpha2.ResourceBinding) error {
-	if err := d.Client.Create(context.TODO(), attachedBinding); err != nil {
-		if !apierrors.IsAlreadyExists(err) {
-			klog.Infof("Failed to create resource binding(%s/%s): %v", attachedBinding.Namespace, attachedBinding.Name, err)
-			return err
+	existBinding := &workv1alpha2.ResourceBinding{}
+	key := client.ObjectKeyFromObject(attachedBinding)
+	err := d.Client.Get(context.TODO(), key, existBinding)
+	if err == nil {
+		if util.GetLabelValue(existBinding.Labels, workv1alpha2.ResourceBindingPermanentIDLabel) == "" {
+			existBinding.Labels = util.DedupeAndMergeLabels(existBinding.Labels,
+				map[string]string{workv1alpha2.ResourceBindingPermanentIDLabel: uuid.New().String()})
 		}
-
-		existBinding := &workv1alpha2.ResourceBinding{}
-		key := client.ObjectKeyFromObject(attachedBinding)
-		if err := d.Client.Get(context.TODO(), key, existBinding); err != nil {
-			klog.Infof("Failed to get resource binding(%s/%s): %v", attachedBinding.Namespace, attachedBinding.Name, err)
-			return err
-		}
-
 		existBinding.Spec.RequiredBy = mergeBindingSnapshot(existBinding.Spec.RequiredBy, attachedBinding.Spec.RequiredBy)
 		existBinding.Labels = util.DedupeAndMergeLabels(existBinding.Labels, attachedBinding.Labels)
 		existBinding.Spec.Resource = attachedBinding.Spec.Resource
@@ -519,6 +534,17 @@ func (d *DependenciesDistributor) createOrUpdateAttachedBinding(attachedBinding 
 			klog.Errorf("Failed to update resource binding(%s/%s): %v", existBinding.Namespace, existBinding.Name, err)
 			return err
 		}
+	}
+
+	if !apierrors.IsNotFound(err) {
+		klog.Infof("Failed to get resource binding(%s/%s): %v", attachedBinding.Namespace, attachedBinding.Name, err)
+		return err
+	}
+
+	attachedBinding.Labels = util.DedupeAndMergeLabels(attachedBinding.Labels,
+		map[string]string{workv1alpha2.ResourceBindingPermanentIDLabel: uuid.New().String()})
+	if err := d.Client.Create(context.TODO(), attachedBinding); err != nil {
+		return err
 	}
 	return nil
 }
@@ -630,6 +656,8 @@ func buildAttachedBinding(binding *workv1alpha2.ResourceBinding, object *unstruc
 		Clusters:  binding.Spec.Clusters,
 	})
 
+	policyID := util.GetLabelValue(binding.Labels, workv1alpha2.ResourceBindingPermanentIDLabel)
+	dependedLabels = util.DedupeAndMergeLabels(dependedLabels, map[string]string{bindingDependedIdLabelKey: policyID})
 	return &workv1alpha2.ResourceBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      names.GenerateBindingName(object.GetKind(), object.GetName()),

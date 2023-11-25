@@ -1,3 +1,19 @@
+/*
+Copyright 2023 The Karmada Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package multiclusterservice
 
 import (
@@ -37,9 +53,8 @@ func TestValidateMultiClusterServiceSpec(t *testing.T) {
 						networkingv1alpha1.ExposureTypeLoadBalancer,
 						networkingv1alpha1.ExposureTypeCrossCluster,
 					},
-					Range: networkingv1alpha1.ExposureRange{
-						ClusterNames: []string{"member1", "member2"},
-					},
+					ServiceProvisionClusters:   []string{"member1", "member2"},
+					ServiceConsumptionClusters: []string{"member1", "member2"},
 				},
 			},
 			expectedErr: field.ErrorList{},
@@ -62,9 +77,8 @@ func TestValidateMultiClusterServiceSpec(t *testing.T) {
 						networkingv1alpha1.ExposureTypeLoadBalancer,
 						networkingv1alpha1.ExposureTypeLoadBalancer,
 					},
-					Range: networkingv1alpha1.ExposureRange{
-						ClusterNames: []string{"member1"},
-					},
+					ServiceProvisionClusters:   []string{"member1", "member2"},
+					ServiceConsumptionClusters: []string{"member1", "member2"},
 				},
 			},
 			expectedErr: field.ErrorList{field.Duplicate(specFld.Child("ports").Index(1).Child("name"), "foo")},
@@ -82,9 +96,8 @@ func TestValidateMultiClusterServiceSpec(t *testing.T) {
 					Types: []networkingv1alpha1.ExposureType{
 						networkingv1alpha1.ExposureTypeLoadBalancer,
 					},
-					Range: networkingv1alpha1.ExposureRange{
-						ClusterNames: []string{"member1"},
-					},
+					ServiceProvisionClusters:   []string{"member1", "member2"},
+					ServiceConsumptionClusters: []string{"member1", "member2"},
 				},
 			},
 			expectedErr: field.ErrorList{field.Invalid(specFld.Child("ports").Index(0).Child("port"), int32(163121), validation.InclusiveRangeError(1, 65535))},
@@ -102,9 +115,8 @@ func TestValidateMultiClusterServiceSpec(t *testing.T) {
 					Types: []networkingv1alpha1.ExposureType{
 						"",
 					},
-					Range: networkingv1alpha1.ExposureRange{
-						ClusterNames: []string{"member1"},
-					},
+					ServiceProvisionClusters:   []string{"member1", "member2"},
+					ServiceConsumptionClusters: []string{"member1", "member2"},
 				},
 			},
 			expectedErr: field.ErrorList{field.Invalid(specFld.Child("types").Index(0), networkingv1alpha1.ExposureType(""), "ExposureType Error")},
@@ -122,12 +134,11 @@ func TestValidateMultiClusterServiceSpec(t *testing.T) {
 					Types: []networkingv1alpha1.ExposureType{
 						networkingv1alpha1.ExposureTypeCrossCluster,
 					},
-					Range: networkingv1alpha1.ExposureRange{
-						ClusterNames: []string{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
-					},
+					ServiceProvisionClusters:   []string{"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+					ServiceConsumptionClusters: []string{},
 				},
 			},
-			expectedErr: field.ErrorList{field.Invalid(specFld.Child("range").Child("clusterNames").Index(0), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "must be no more than 48 characters")},
+			expectedErr: field.ErrorList{field.Invalid(specFld.Child("range").Child("serviceProvisionClusters").Index(0), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "must be no more than 48 characters")},
 		},
 	}
 	for _, tt := range tests {

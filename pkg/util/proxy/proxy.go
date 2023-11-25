@@ -1,3 +1,19 @@
+/*
+Copyright 2022 The Karmada Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package proxy
 
 import (
@@ -53,7 +69,7 @@ func ConnectCluster(ctx context.Context, cluster *clusterapis.Cluster, proxyPath
 	if err != nil {
 		return nil, err
 	}
-	impersonateToken, err := getImpersonateToken(cluster.Name, impersonateTokenSecret)
+	impersonateToken, err := ImpersonateToken(cluster.Name, impersonateTokenSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get impresonateToken for cluster %s: %v", cluster.Name, err)
 	}
@@ -72,7 +88,7 @@ func newProxyHandler(location *url.URL, proxyTransport http.RoundTripper, cluste
 
 		req.Header.Set(authenticationv1.ImpersonateUserHeader, requester.GetName())
 		for _, group := range requester.GetGroups() {
-			if !skipGroup(group) {
+			if !SkipGroup(group) {
 				req.Header.Add(authenticationv1.ImpersonateGroupHeader, group)
 			}
 		}
@@ -197,7 +213,7 @@ func ParseProxyHeaders(proxyHeaders map[string]string) http.Header {
 	return header
 }
 
-func getImpersonateToken(clusterName string, secret *corev1.Secret) (string, error) {
+func ImpersonateToken(clusterName string, secret *corev1.Secret) (string, error) {
 	token, found := secret.Data[clusterapis.SecretTokenKey]
 	if !found {
 		return "", fmt.Errorf("the impresonate token of cluster %s is empty", clusterName)
@@ -213,7 +229,8 @@ func getClusterCABundle(clusterName string, secret *corev1.Secret) (string, erro
 	return string(caBundle), nil
 }
 
-func skipGroup(group string) bool {
+// SkipGroup tells whether the input group can be skipped during impersonate.
+func SkipGroup(group string) bool {
 	switch group {
 	case user.AllAuthenticated, user.AllUnauthenticated:
 		return true

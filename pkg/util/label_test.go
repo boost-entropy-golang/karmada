@@ -1,11 +1,29 @@
+/*
+Copyright 2022 The Karmada Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package util
 
 import (
 	"reflect"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
 )
 
@@ -510,71 +528,65 @@ func TestRetainLabels(t *testing.T) {
 func TestRecordManagedLabels(t *testing.T) {
 	tests := []struct {
 		name     string
-		object   *unstructured.Unstructured
-		expected *unstructured.Unstructured
+		object   *workv1alpha1.Work
+		expected *workv1alpha1.Work
 	}{
 		{
 			name: "nil label",
-			object: &unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"apiVersion": "apps/v1",
-					"kind":       "Deployment",
-					"metadata": map[string]interface{}{
-						"name": "demo-deployment-1",
-					},
-					"spec": map[string]interface{}{
-						"replicas": 2,
-					},
+			object: &workv1alpha1.Work{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "work.karmada.io/v1alpha1",
+					Kind:       "Work",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "demo-work-1",
+					Namespace: "cluster1-ns",
+					Labels:    nil,
 				},
 			},
-			expected: &unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"apiVersion": "apps/v1",
-					"kind":       "Deployment",
-					"metadata": map[string]interface{}{
-						"name": "demo-deployment-1",
-						"annotations": map[string]interface{}{
-							workv1alpha2.ManagedLabels: "",
-						},
+			expected: &workv1alpha1.Work{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "work.karmada.io/v1alpha1",
+					Kind:       "Work",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "demo-work-1",
+					Namespace: "cluster1-ns",
+					Annotations: map[string]string{
+						workv1alpha2.ManagedLabels: "",
 					},
-					"spec": map[string]interface{}{
-						"replicas": 2,
-					},
+					Labels: nil,
 				},
 			},
 		},
 		{
 			name: "object has has labels",
-			object: &unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"apiVersion": "apps/v1",
-					"kind":       "Deployment",
-					"metadata": map[string]interface{}{
-						"name": "demo-deployment-1",
-						"labels": map[string]interface{}{
-							"foo": "foo",
-						},
-					},
-					"spec": map[string]interface{}{
-						"replicas": 2,
+			object: &workv1alpha1.Work{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "work.karmada.io/v1alpha1",
+					Kind:       "Work",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "demo-work-1",
+					Namespace: "cluster1-ns",
+					Labels: map[string]string{
+						"foo": "bar",
 					},
 				},
 			},
-			expected: &unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"apiVersion": "apps/v1",
-					"kind":       "Deployment",
-					"metadata": map[string]interface{}{
-						"name": "demo-deployment-1",
-						"annotations": map[string]interface{}{
-							workv1alpha2.ManagedLabels: "foo",
-						},
-						"labels": map[string]interface{}{
-							"foo": "foo",
-						},
+			expected: &workv1alpha1.Work{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "work.karmada.io/v1alpha1",
+					Kind:       "Work",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "demo-work-1",
+					Namespace: "cluster1-ns",
+					Annotations: map[string]string{
+						workv1alpha2.ManagedLabels: "foo",
 					},
-					"spec": map[string]interface{}{
-						"replicas": 2,
+					Labels: map[string]string{
+						"foo": "bar",
 					},
 				},
 			},

@@ -1,4 +1,18 @@
 #!/usr/bin/env bash
+# Copyright 2021 The Karmada Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 
 set -o errexit
 set -o nounset
@@ -24,6 +38,8 @@ KARMADA_METRICS_ADAPTER_LABEL="karmada-metrics-adapter"
 KARMADA_GO_PACKAGE="github.com/karmada-io/karmada"
 
 MIN_Go_VERSION=go1.20.0
+
+DEFAULT_CLUSTER_VERSION="kindest/node:v1.27.3"
 
 KARMADA_TARGET_SOURCE=(
   karmada-aggregated-apiserver=cmd/aggregated-apiserver
@@ -733,7 +749,7 @@ function util::set_mirror_registry_for_china_mainland() {
     "cluster/images/buildx.Dockerfile"
   )
   for dockerfile in "${dockerfile_list[@]}"; do
-    grep 'mirrors.ustc.edu.cn' ${repo_root}/${dockerfile} > /dev/null || sed -i'' -e "1a\\
+    grep 'mirrors.ustc.edu.cn' ${repo_root}/${dockerfile} > /dev/null || sed -i'' -e "/FROM alpine:/a\\
 RUN echo -e http://mirrors.ustc.edu.cn/alpine/v3.17/main/ > /etc/apk/repositories" ${repo_root}/${dockerfile}
   done
 }

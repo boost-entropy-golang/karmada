@@ -1,3 +1,19 @@
+/*
+Copyright 2023 The Karmada Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package v1alpha1
 
 import (
@@ -59,8 +75,20 @@ type MultiClusterServiceSpec struct {
 	// If not set and Types contains CrossCluster, all clusters will
 	// be selected, that means the referencing service will be exposed
 	// across all registered clusters.
+	// Deprecated: in favor of ServiceProvisionClusters/ServiceConsumptionClusters.
 	// +optional
 	Range ExposureRange `json:"range,omitempty"`
+
+	// ServiceProvisionClusters specifies the clusters which will provision the service backend.
+	// If leave it empty, we will collect the backend endpoints from all clusters and sync
+	// them to the ServiceConsumptionClusters.
+	// +optional
+	ServiceProvisionClusters []string `json:"serviceProvisionClusters,omitempty"`
+
+	// ServiceConsumptionClusters specifies the clusters where the service will be exposed, for clients.
+	// If leave it empty, the service will be exposed to all clusters.
+	// +optional
+	ServiceConsumptionClusters []string `json:"serviceConsumptionClusters,omitempty"`
 }
 
 // ExposureType describes how to expose the service.

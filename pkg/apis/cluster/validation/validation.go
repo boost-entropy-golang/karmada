@@ -1,3 +1,19 @@
+/*
+Copyright 2021 The Karmada Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package validation
 
 import (
@@ -38,8 +54,7 @@ func ValidateClusterName(name string) []string {
 }
 
 var (
-	supportedSyncModes     = sets.NewString(string(api.Pull), string(api.Push))
-	supportedResourceNames = sets.NewString(string(api.ResourceCPU), string(api.ResourceMemory), string(api.ResourceStorage), string(api.ResourceEphemeralStorage))
+	supportedSyncModes = sets.NewString(string(api.Pull), string(api.Push))
 )
 
 // ValidateCluster tests if required fields in the Cluster are set.
@@ -192,9 +207,6 @@ func ValidateClusterResourceModels(fldPath *field.Path, models []api.ResourceMod
 		}
 
 		for j, resourceModelRange := range resourceModel.Ranges {
-			if !supportedResourceNames.Has(string(resourceModelRange.Name)) {
-				return field.NotSupported(fldPath.Child("ranges").Child("name"), resourceModelRange.Name, supportedResourceNames.List())
-			}
 			if resourceModelRange.Max.Cmp(resourceModelRange.Min) <= 0 {
 				return field.Invalid(fldPath, models, "The max value of each resource must be greater than the min value")
 			}
