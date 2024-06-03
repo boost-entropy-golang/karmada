@@ -2,12 +2,18 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [v1.9.1](#v191)
-  - [Downloads for v1.9.1](#downloads-for-v191)
-  - [Changelog since v1.9.0](#changelog-since-v190)
+- [v1.9.2](#v192)
+  - [Downloads for v1.9.2](#downloads-for-v192)
+  - [Changelog since v1.9.1](#changelog-since-v191)
     - [Changes by Kind](#changes-by-kind)
       - [Bug Fixes](#bug-fixes)
       - [Others](#others)
+- [v1.9.1](#v191)
+  - [Downloads for v1.9.1](#downloads-for-v191)
+  - [Changelog since v1.9.0](#changelog-since-v190)
+    - [Changes by Kind](#changes-by-kind-1)
+      - [Bug Fixes](#bug-fixes-1)
+      - [Others](#others-1)
 - [v1.9.0](#v190)
   - [Downloads for v1.9.0](#downloads-for-v190)
   - [What's New](#whats-new)
@@ -17,7 +23,7 @@
   - [Other Notable Changes](#other-notable-changes)
     - [API Changes](#api-changes)
     - [Deprecation](#deprecation)
-    - [Bug Fixes](#bug-fixes-1)
+    - [Bug Fixes](#bug-fixes-2)
     - [Security](#security)
     - [Features & Enhancements](#features--enhancements)
   - [Other](#other)
@@ -27,6 +33,20 @@
   - [Contributors](#contributors)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+# v1.9.2
+## Downloads for v1.9.2
+
+Download v1.9.2 in the [v1.9.2 release page](https://github.com/karmada-io/karmada/releases/tag/v1.9.2).
+
+## Changelog since v1.9.1
+### Changes by Kind
+#### Bug Fixes
+None.
+
+#### Others
+- `karmadactl`:  The policy for when to pull a container image now is `IfNotPresent in `init` command. ([#4988](https://github.com/karmada-io/karmada/pull/4988), @zhzhuang-zju)
+- The base image `alpine` now has been promoted from `alpine:3.19.1` to `alpine:3.20.0`.
 
 # v1.9.1
 ## Downloads for v1.9.1
@@ -57,7 +77,7 @@ The PropgationPolicy now supports lazy mode that can delay the activation of mod
 
 The ability also applies to ClusterPropagationPolicy and it is disabled by default for backward compatibility, users need to enable it explicitly by specifying the `activationPreference` in PropagationPolicy or ClusterPropagationPolicy.
 
-See [Proposal of the LazyActivation preference for Policy](https://github.com/karmada-io/karmada/pull/4602) for more details.
+See [Proposal of the LazyActivation preference for Policy](https://github.com/karmada-io/karmada/blob/master/docs/proposals/scheduling/activation-preference/lazy-activation-preference.md) for more details.
 
 (Feature contributors: @chaosi-zju)
 
@@ -100,7 +120,7 @@ It is in alpha state and controlled by the feature gate `ResourceQuotaEstimate`,
 - `karmadactl`: Fixed return err in case of  secret.spec. caBundle is nil. ([#4371](https://github.com/karmada-io/karmada/pull/4371), @CharlesQQ)
 - `karmadactl`:  Register cluster install karmada-agent should set leader-elect-resouce-namespace. ([#4404](https://github.com/karmada-io/karmada/pull/4404), @yanfeng1992)
 - `karmada-search`: Add the logic of checking whether the resource API to be retrieved is installed in the cluster. ([#4554](https://github.com/karmada-io/karmada/pull/4554), @yanfeng1992)
-- karmada-search: support accept content type `as=Table` in the proxy global resource function. ([#4580](https://github.com/karmada-io/karmada/pull/4580), @niuyueyang1996)
+- `karmada-search`: support accept content type `as=Table` in the proxy global resource function. ([#4580](https://github.com/karmada-io/karmada/pull/4580), @niuyueyang1996)
 - `karmada-scheduler`: reschedule the replicas of the disappear clusters in PP/CPP. ([#4586](https://github.com/karmada-io/karmada/pull/4586), @jwcesign)
 - `karmada-operator`: Fixed the issue that the component can not be redeployed due to service update is not allowed. ([#4649](https://github.com/karmada-io/karmada/pull/4649), @laihezhao)
 
