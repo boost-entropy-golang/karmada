@@ -524,6 +524,12 @@ var _ = ginkgo.Describe("Karmadactl exec testing", func() {
 	})
 
 	ginkgo.It("Test exec command", func() {
+		waitForPodReady := func(namespace, podName string) {
+			framework.WaitPodPresentOnClusterFitWith(framework.ClusterNames()[0], namespace, podName, func(pod *corev1.Pod) bool {
+				return pod.Status.Phase == corev1.PodRunning
+			})
+		}
+		waitForPodReady(pod.Namespace, pod.Name)
 		framework.WaitPodPresentOnClustersFitWith(framework.ClusterNames(), pod.Namespace, pod.Name,
 			func(pod *corev1.Pod) bool {
 				return pod.Status.Phase == corev1.PodRunning
@@ -1129,6 +1135,24 @@ var _ = ginkgo.Describe("Karmadactl token testing", func() {
 
 		ginkgo.It("should return error for invalid flag in list", func() {
 			cmd := framework.NewKarmadactlCommand(kubeconfig, karmadaContext, karmadactlPath, "", karmadactlTimeout, "token", "list", "--invalidflag")
+			_, err := cmd.ExecOrDie()
+			gomega.Expect(err).Should(gomega.HaveOccurred())
+			gomega.Expect(strings.Contains(err.Error(), "unknown flag: --invalidflag")).Should(gomega.BeTrue())
+		})
+	})
+})
+
+var _ = ginkgo.Describe("Karmadactl options testing", func() {
+	ginkgo.Context("Test karmadactl options command", func() {
+		ginkgo.It("should list available options successfully", func() {
+			cmd := framework.NewKarmadactlCommand(kubeconfig, "", karmadactlPath, "", karmadactlTimeout, "options")
+			output, err := cmd.ExecOrDie()
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			gomega.Expect(strings.Contains(output, "The following options can be passed to any command")).Should(gomega.BeTrue())
+		})
+
+		ginkgo.It("should return error for invalid flag in options", func() {
+			cmd := framework.NewKarmadactlCommand(kubeconfig, "", karmadactlPath, "", karmadactlTimeout, "options", "--invalidflag")
 			_, err := cmd.ExecOrDie()
 			gomega.Expect(err).Should(gomega.HaveOccurred())
 			gomega.Expect(strings.Contains(err.Error(), "unknown flag: --invalidflag")).Should(gomega.BeTrue())
