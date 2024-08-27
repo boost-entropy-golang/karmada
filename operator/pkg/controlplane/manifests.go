@@ -128,11 +128,10 @@ spec:
         command:
         - /bin/karmada-controller-manager
         - --kubeconfig=/etc/karmada/kubeconfig
-        - --bind-address=0.0.0.0
         - --cluster-status-update-frequency=10s
-        - --secure-port=10357
         - --failover-eviction-timeout=30s
         - --leader-elect-resource-namespace={{ .SystemNamespace }}
+        - --health-probe-bind-address=0.0.0.0:10357
         - --v=4
         livenessProbe:
           httpGet:
@@ -248,7 +247,8 @@ spec:
         command:
         - /bin/karmada-descheduler
         - --kubeconfig=/etc/karmada/kubeconfig
-        - --bind-address=0.0.0.0
+        - --metrics-bind-address=0.0.0.0:10358
+        - --health-probe-bind-address=0.0.0.0:10358
         - --leader-elect-resource-namespace={{ .SystemNamespace }}
         - --scheduler-estimator-ca-file=/etc/karmada/pki/ca.crt
         - --scheduler-estimator-cert-file=/etc/karmada/pki/karmada.crt
