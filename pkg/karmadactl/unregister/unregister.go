@@ -130,6 +130,9 @@ type CommandUnregisterOption struct {
 	// ControlPlaneClient control plane client set
 	ControlPlaneClient karmadaclientset.Interface
 
+	// ControlPlaneKubeClient control plane kube client set
+	ControlPlaneKubeClient kubeclient.Interface
+
 	// MemberClusterClient member cluster client set
 	MemberClusterClient kubeclient.Interface
 }
@@ -223,6 +226,10 @@ func (j *CommandUnregisterOption) buildKarmadaClientSetFromFile() error {
 	if err != nil {
 		return fmt.Errorf("failed to build karmada control plane clientset: %w", err)
 	}
+	j.ControlPlaneKubeClient, err = register.ToClientSet(karmadaCfg)
+	if err != nil {
+		return fmt.Errorf("failed to build kube control plane clientset: %w", err)
+	}
 	return nil
 }
 
@@ -248,7 +255,14 @@ func (j *CommandUnregisterOption) buildKarmadaClientSetFromAgent() error {
 	}
 
 	j.ControlPlaneClient, err = register.ToKarmadaClient(karmadaCfg)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to build karmada control plane clientset: %w", err)
+	}
+	j.ControlPlaneKubeClient, err = register.ToClientSet(karmadaCfg)
+	if err != nil {
+		return fmt.Errorf("failed to build kube control plane clientset: %w", err)
+	}
+	return nil
 }
 
 func (j *CommandUnregisterOption) getKarmadaAgentConfig(agent *appsv1.Deployment) (*clientcmdapi.Config, error) {
@@ -282,6 +296,10 @@ func (j *CommandUnregisterOption) getKarmadaAgentConfig(agent *appsv1.Deployment
 	if err != nil {
 		return nil, fmt.Errorf("failed to get the secret which stores the karmada agent config")
 	}
+	if len(agentConfigSecret.Data[fileName]) == 0 {
+		return nil, fmt.Errorf("empty data, secretName: %s, keyName: %s", agentConfigSecretName, fileName)
+	}
+
 	return clientcmd.Load(agentConfigSecret.Data[fileName])
 }
 
@@ -301,7 +319,8 @@ func (j *CommandUnregisterOption) RunUnregisterCluster() error {
 	}
 
 	// 1. delete the cluster object from the Karmada control plane
-	if err := cmdutil.DeleteClusterObject(j.ControlPlaneClient, j.ClusterName, j.Wait, j.DryRun); err != nil {
+	//TODO: add flag --force to implement force deletion.
+	if err := cmdutil.DeleteClusterObject(j.ControlPlaneKubeClient, j.ControlPlaneClient, j.ClusterName, j.Wait, j.DryRun, false); err != nil {
 		klog.Errorf("Failed to delete cluster object. cluster name: %s, error: %v", j.ClusterName, err)
 		return err
 	}
